@@ -137,7 +137,7 @@
 import { ref, computed, nextTick } from 'vue'
 
 // ── STATE ──
-const balance = ref(100.0)
+const balance = ref(20.0)
 const bet = ref(1.0)
 const lastWin = ref(0)
 const isSpinning = ref(false)
