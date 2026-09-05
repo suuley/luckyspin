@@ -122,25 +122,28 @@ const reel1 = ref(null)
 const reel2 = ref(null)
 const reel3 = ref(null)
 
-// ── OPTIMIZED PAYOUT TABLE (EXACTLY 80% RTP) ──
+```js
+// ── PAYOUT TABLE — EXACTLY 80% RTP / 20% HOUSE EDGE ──
 const payoutTable = {
-  // HIGH-VALUE JACKPOTS (RARE)
-  '⭐⭐⭐': { payout: 1000 },  // $1000 Jackpot
-  '💎💎💎': { payout: 500 },   // $500 Jackpot
-  '7️⃣7️⃣7️⃣': { payout: 100 },  // $100 Win
+  // HIGH-VALUE JACKPOTS
+  '⭐⭐⭐': { payout: 1000 },
+  '💎💎💎': { payout: 500 },
+  '7️⃣7️⃣7️⃣': { payout: 100 },
 
   // MEDIUM-VALUE
   '🔔🔔🔔': { payout: 30 },
   '🍇🍇🍇': { payout: 12 },
 
-  // LOW-VALUE (COMMON)
+  // LOW-VALUE
   '🍊🍊🍊': { payout: 6 },
   '🍋🍋🍋': { payout: 3 },
   '🍒🍒🍒': { payout: 1.5 },
 
-  // TWO-OF-A-KIND (PARTIAL REFUND)
-  'twoSame': { payout: 0.5 }
+  // TWO-OF-A-KIND
+  // Precisely calculated to produce 80.000000% RTP
+  'twoSame': { payout: 1.352957223842263 }
 }
+```
 
 // ── WEIGHTED RANDOM SYMBOL GENERATOR ──
 const weightedRandom = () => {
