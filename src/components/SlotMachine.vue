@@ -80,7 +80,6 @@ import Reel from './Reel.vue'
 import Controls from './Controls.vue'
 import Confetti from './Confetti.vue'
 import { useAudio } from '../composables/useAudio.js'
-
 const { playSpin, stopSpin, playWin, playClick } = useAudio()
 
 // ── STATE ──
@@ -118,11 +117,11 @@ const reel1Duration = 2400
 const reel2Duration = 2800
 const reel3Duration = 3200
 
+// Template refs to child Reel components
 const reel1 = ref(null)
 const reel2 = ref(null)
 const reel3 = ref(null)
 
-```js
 // ── PAYOUT TABLE — EXACTLY 80% RTP / 20% HOUSE EDGE ──
 const payoutTable = {
   // HIGH-VALUE JACKPOTS
@@ -143,44 +142,21 @@ const payoutTable = {
   // Precisely calculated to produce 80.000000% RTP
   'twoSame': { payout: 1.352957223842263 }
 }
-```
 
-// ── WEIGHTED RANDOM SYMBOL GENERATOR ──
-const weightedRandom = () => {
-  const weights = {
-    '🍒': 30, '🍋': 25, '🍊': 20, '🍇': 15,
-    '🔔': 10, '7️⃣': 4,  '💎': 2,  '⭐': 1
-  }
-  const total = Object.values(weights).reduce((a, b) => a + b, 0)
-  let rand = Math.random() * total
-  for (const [symbol, weight] of Object.entries(weights)) {
-    rand -= weight
-    if (rand <= 0) return symbol
-  }
-  return '🍒'
-}
 
-// ── CHECK WIN LOGIC ──
+
 const checkWin = (a, b, c) => {
   const key = `${a}${b}${c}`
-  const betAmount = bet.value
-
-  // 1. Exact 3-Symbol Match
-  if (payoutTable[key]) {
-    return payoutTable[key].payout * betAmount
-  }
-
-  // 2. Two-of-a-kind (partial refund)
-  if (a === b || a === c || b === c) {
-    return payoutTable['twoSame'].payout * betAmount
-  }
-
+  if (payoutTable[key]) return payoutTable[key] * bet.value
+  if (a === b && a !== c) return 5 * bet.value * 0.5
+  if (a === c && a !== b) return 5 * bet.value * 0.3
+  if (b === c && a !== b) return 5 * bet.value * 0.3
   return 0
 }
 
-// ── SPIN REEL ──
+// ── CORE SPIN LOGIC ──
 const spinReel = async (stripRef, offsetRef, transRef, spinRef, reelRef, target, duration) => {
-  const longStrip = [weightedRandom(), target, weightedRandom(), ...Array.from({ length: FILLER_COUNT }, weightedRandom)]
+  const longStrip = [rnd(), target, rnd(), ...Array.from({ length: FILLER_COUNT }, rnd)]
   const startOffset = -(SCROLL_ITEMS * SYMBOL_HEIGHT)
 
   transRef.value = false
@@ -198,7 +174,7 @@ const spinReel = async (stripRef, offsetRef, transRef, spinRef, reelRef, target,
 
   transRef.value = false
   spinRef.value = false
-  stripRef.value = [weightedRandom(), target, weightedRandom()]
+  stripRef.value = [rnd(), target, rnd()]
   offsetRef.value = 0
 }
 
@@ -210,14 +186,14 @@ const handleClick = async (clickedReel, clickedSymbol) => {
     return
   }
 
-  playClick()
+  playClick() 
   balance.value -= bet.value
   lastWin.value = 0
   isSpinning.value = true
 
-  const t1 = clickedReel === 1 ? clickedSymbol : weightedRandom()
-  const t2 = clickedReel === 2 ? clickedSymbol : weightedRandom()
-  const t3 = clickedReel === 3 ? clickedSymbol : weightedRandom()
+  const t1 = clickedReel === 1 ? clickedSymbol : rnd()
+  const t2 = clickedReel === 2 ? clickedSymbol : rnd()
+  const t3 = clickedReel === 3 ? clickedSymbol : rnd()
 
   playSpin()
 
@@ -227,15 +203,15 @@ const handleClick = async (clickedReel, clickedSymbol) => {
     spinReel(reel3Strip, reel3Offset, reel3Transition, reel3Spinning, reel3, t3, reel3Duration)
   ])
 
-  stopSpin()
+  stopSpin() 
   isSpinning.value = false
 
   const win = checkWin(t1, t2, t3)
   if (win > 0) {
     balance.value += win
     lastWin.value = win
-    if (win >= 50) showConfetti.value = true
-    playWin()
+    showConfetti.value = true
+    playWin() 
   }
 }
 
@@ -246,8 +222,8 @@ const handleRandomSpin = () => {
     alert('Insufficient balance!')
     return
   }
-  playClick()
-  handleClick(0, weightedRandom())
+  playClick() 
+  handleClick(0, rnd())
 }
 </script>
 
