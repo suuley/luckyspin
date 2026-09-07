@@ -6,6 +6,7 @@
         <span class="logo-icon">🎰</span>
         <span class="logo-text">LUCKY SPIN</span>
       </div>
+
       <div class="balance-display">
         <span class="balance-label">Balance</span>
         <span class="balance-amount">${{ balance.toFixed(2) }}</span>
@@ -15,8 +16,10 @@
     <!-- Slot Machine -->
     <div class="slot-machine">
       <div class="hint-text">💡 Click any symbol to spin all reels!</div>
+
       <div class="machine-frame">
         <div class="reels-container">
+
           <Reel
             ref="reel1"
             :symbols="reel1Strip"
@@ -27,6 +30,7 @@
             :highlighted-idx="1"
             @symbol-click="(s) => handleClick(1, s)"
           />
+
           <Reel
             ref="reel2"
             :symbols="reel2Strip"
@@ -37,6 +41,7 @@
             :highlighted-idx="1"
             @symbol-click="(s) => handleClick(2, s)"
           />
+
           <Reel
             ref="reel3"
             :symbols="reel3Strip"
@@ -47,7 +52,9 @@
             :highlighted-idx="1"
             @symbol-click="(s) => handleClick(3, s)"
           />
+
         </div>
+
         <div class="payline-center"></div>
       </div>
     </div>
@@ -61,7 +68,11 @@
     />
 
     <!-- Win Display -->
-    <div v-if="lastWin > 0" class="win-display" :class="{ 'big-win': lastWin >= 50 }">
+    <div
+      v-if="lastWin > 0"
+      class="win-display"
+      :class="{ 'big-win': lastWin >= 50 }"
+    >
       🎉 WIN ${{ lastWin.toFixed(2) }} 🎉
     </div>
 
@@ -80,26 +91,104 @@ import Reel from './Reel.vue'
 import Controls from './Controls.vue'
 import Confetti from './Confetti.vue'
 import { useAudio } from '../composables/useAudio.js'
+
 const { playSpin, stopSpin, playWin, playClick } = useAudio()
 
-// ── STATE ──
+// ============================================================
+// STATE
+// ============================================================
+
 const balance = ref(10.0)
 const bet = ref(1.0)
 const lastWin = ref(0)
 const isSpinning = ref(false)
 const showConfetti = ref(false)
 
-const SYMBOLS = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣', '⭐']
+const SYMBOLS = [
+  '🍒',
+  '🍋',
+  '🍊',
+  '🍇',
+  '🔔',
+  '💎',
+  '7️⃣',
+  '⭐'
+]
+
 const SYMBOL_HEIGHT = 70
 const FILLER_COUNT = 50
 const SCROLL_ITEMS = 40
 
-const rnd = () => SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)]
+// ============================================================
+// WEIGHTED SYMBOL DISTRIBUTION
+//
+// Total weight = 107
+//
+// 🍒 = 30/107
+// 🍋 = 25/107
+// 🍊 = 20/107
+// 🍇 = 15/107
+// 🔔 = 10/107
+// 7️⃣ =  4/107
+// 💎 =  2/107
+// ⭐ =  1/107
+//
+// These probabilities are used for EVERY mathematical outcome.
+// ============================================================
 
-// Short idle strips: [top, center, bottom]
-const reel1Strip = ref([rnd(), rnd(), rnd()])
-const reel2Strip = ref([rnd(), rnd(), rnd()])
-const reel3Strip = ref([rnd(), rnd(), rnd()])
+const SYMBOL_WEIGHTS = {
+  '🍒': 30,
+  '🍋': 25,
+  '🍊': 20,
+  '🍇': 15,
+  '🔔': 10,
+  '7️⃣': 4,
+  '💎': 2,
+  '⭐': 1
+}
+
+const TOTAL_WEIGHT = Object.values(SYMBOL_WEIGHTS)
+  .reduce((sum, weight) => sum + weight, 0)
+
+// ============================================================
+// WEIGHTED RANDOM
+// ============================================================
+
+const weightedRandom = () => {
+  let random = Math.random() * TOTAL_WEIGHT
+
+  for (const [symbol, weight] of Object.entries(SYMBOL_WEIGHTS)) {
+    random -= weight
+
+    if (random < 0) {
+      return symbol
+    }
+  }
+
+  return '🍒'
+}
+
+// ============================================================
+// REEL STATE
+// ============================================================
+
+const reel1Strip = ref([
+  weightedRandom(),
+  weightedRandom(),
+  weightedRandom()
+])
+
+const reel2Strip = ref([
+  weightedRandom(),
+  weightedRandom(),
+  weightedRandom()
+])
+
+const reel3Strip = ref([
+  weightedRandom(),
+  weightedRandom(),
+  weightedRandom()
+])
 
 const reel1Offset = ref(0)
 const reel2Offset = ref(0)
@@ -117,115 +206,233 @@ const reel1Duration = 2400
 const reel2Duration = 2800
 const reel3Duration = 3200
 
-// Template refs to child Reel components
 const reel1 = ref(null)
 const reel2 = ref(null)
 const reel3 = ref(null)
 
-// ── PAYOUT TABLE — EXACTLY 80% RTP / 20% HOUSE EDGE ──
+// ============================================================
+// PAYOUT TABLE
+//
+// These are MULTIPLIERS of the bet.
+//
+// Example:
+// $1 × 1000 = $1000
+// $0.05 × 1000 = $50
+// $0.005 × 1000 = $5
+//
+// ============================================================
+
 const payoutTable = {
-  // HIGH-VALUE JACKPOTS
   '⭐⭐⭐': { payout: 1000 },
   '💎💎💎': { payout: 500 },
   '7️⃣7️⃣7️⃣': { payout: 100 },
 
-  // MEDIUM-VALUE
   '🔔🔔🔔': { payout: 30 },
   '🍇🍇🍇': { payout: 12 },
 
-  // LOW-VALUE
   '🍊🍊🍊': { payout: 6 },
   '🍋🍋🍋': { payout: 3 },
-  '🍒🍒🍒': { payout: 1.5 },
-
-  // TWO-OF-A-KIND
-  // Precisely calculated to produce 80.000000% RTP
-  'twoSame': { payout: 1.352957223842263 }
+  '🍒🍒🍒': { payout: 1.5 }
 }
 
+// ============================================================
+// EXACT TWO-OF-A-KIND PAYOUT
+//
+// This value is mathematically solved for the exact 80% RTP
+// using the symbol weights above and the three-of-a-kind table.
+//
+// 1.3529572238422625 × bet
+//
+// The resulting theoretical RTP is:
+// 80.000000000000%
+//
+// House edge:
+// 20.000000000000%
+// ============================================================
 
+const TWO_SAME_PAYOUT = 1.3529572238422625
+
+// ============================================================
+// WIN CALCULATION
+// ============================================================
 
 const checkWin = (a, b, c) => {
   const key = `${a}${b}${c}`
-  if (payoutTable[key]) return payoutTable[key] * bet.value
-  if (a === b && a !== c) return 5 * bet.value * 0.5
-  if (a === c && a !== b) return 5 * bet.value * 0.3
-  if (b === c && a !== b) return 5 * bet.value * 0.3
+
+  // -----------------------------
+  // THREE OF A KIND
+  // -----------------------------
+
+  if (payoutTable[key]) {
+    return payoutTable[key].payout * bet.value
+  }
+
+  // -----------------------------
+  // EXACTLY TWO OF A KIND
+  // -----------------------------
+
+  if (a === b || a === c || b === c) {
+    return TWO_SAME_PAYOUT * bet.value
+  }
+
+  // -----------------------------
+  // NO WIN
+  // -----------------------------
+
   return 0
 }
 
-// ── CORE SPIN LOGIC ──
-const spinReel = async (stripRef, offsetRef, transRef, spinRef, reelRef, target, duration) => {
-  const longStrip = [rnd(), target, rnd(), ...Array.from({ length: FILLER_COUNT }, rnd)]
+// ============================================================
+// SPIN REEL
+// ============================================================
+
+const spinReel = async (
+  stripRef,
+  offsetRef,
+  transRef,
+  spinRef,
+  reelRef,
+  target,
+  duration
+) => {
+  const longStrip = [
+    weightedRandom(),
+    target,
+    weightedRandom(),
+    ...Array.from(
+      { length: FILLER_COUNT },
+      weightedRandom
+    )
+  ]
+
   const startOffset = -(SCROLL_ITEMS * SYMBOL_HEIGHT)
 
   transRef.value = false
   spinRef.value = true
+
   stripRef.value = longStrip
   offsetRef.value = startOffset
 
   await nextTick()
-  if (reelRef.value?.innerEl) void reelRef.value.innerEl.offsetHeight
+
+  if (reelRef.value?.innerEl) {
+    void reelRef.value.innerEl.offsetHeight
+  }
 
   transRef.value = true
   offsetRef.value = 0
 
-  await new Promise((r) => setTimeout(r, duration + 50))
+  await new Promise((resolve) => {
+    setTimeout(resolve, duration + 50)
+  })
 
   transRef.value = false
   spinRef.value = false
-  stripRef.value = [rnd(), target, rnd()]
+
+  stripRef.value = [
+    weightedRandom(),
+    target,
+    weightedRandom()
+  ]
+
   offsetRef.value = 0
 }
 
-// ── CLICK HANDLER ──
-const handleClick = async (clickedReel, clickedSymbol) => {
+// ============================================================
+// SPIN HANDLER
+//
+// IMPORTANT:
+// The clicked symbol is NOT used as the mathematical outcome.
+//
+// This prevents the player from selecting ⭐ or 💎 and changing
+// the RTP.
+//
+// The click remains a UI interaction only.
+// ============================================================
+
+const handleClick = async () => {
   if (isSpinning.value) return
+
   if (balance.value < bet.value) {
     alert('Insufficient balance!')
     return
   }
 
-  playClick() 
+  playClick()
+
   balance.value -= bet.value
   lastWin.value = 0
+  showConfetti.value = false
   isSpinning.value = true
 
-  const t1 = clickedReel === 1 ? clickedSymbol : rnd()
-  const t2 = clickedReel === 2 ? clickedSymbol : rnd()
-  const t3 = clickedReel === 3 ? clickedSymbol : rnd()
+  // Generate ALL three outcomes independently
+  // using the exact weighted distribution.
+
+  const t1 = weightedRandom()
+  const t2 = weightedRandom()
+  const t3 = weightedRandom()
 
   playSpin()
 
   await Promise.all([
-    spinReel(reel1Strip, reel1Offset, reel1Transition, reel1Spinning, reel1, t1, reel1Duration),
-    spinReel(reel2Strip, reel2Offset, reel2Transition, reel2Spinning, reel2, t2, reel2Duration),
-    spinReel(reel3Strip, reel3Offset, reel3Transition, reel3Spinning, reel3, t3, reel3Duration)
+    spinReel(
+      reel1Strip,
+      reel1Offset,
+      reel1Transition,
+      reel1Spinning,
+      reel1,
+      t1,
+      reel1Duration
+    ),
+
+    spinReel(
+      reel2Strip,
+      reel2Offset,
+      reel2Transition,
+      reel2Spinning,
+      reel2,
+      t2,
+      reel2Duration
+    ),
+
+    spinReel(
+      reel3Strip,
+      reel3Offset,
+      reel3Transition,
+      reel3Spinning,
+      reel3,
+      t3,
+      reel3Duration
+    )
   ])
 
-  stopSpin() 
+  stopSpin()
   isSpinning.value = false
 
+  // Calculate actual mathematical win
   const win = checkWin(t1, t2, t3)
+
   if (win > 0) {
     balance.value += win
     lastWin.value = win
-    showConfetti.value = true
-    playWin() 
+
+    if (win >= 50) {
+      showConfetti.value = true
+    }
+
+    playWin()
   }
 }
 
-// ── RANDOM SPIN ──
+// ============================================================
+// RANDOM SPIN BUTTON
+// ============================================================
+
 const handleRandomSpin = () => {
-  if (isSpinning.value) return
-  if (balance.value < bet.value) {
-    alert('Insufficient balance!')
-    return
-  }
-  playClick() 
-  handleClick(0, rnd())
+  handleClick()
 }
 </script>
+
 
 <style scoped>
 .app-container {
