@@ -3,8 +3,6 @@
     v-if="show"
     ref="canvas"
     class="confetti-canvas"
-    width="500"
-    height="600"
   ></canvas>
 </template>
 
@@ -26,9 +24,9 @@ const colors = ['#ffd700', '#ff6b35', '#ff3366', '#00d4ff', '#7cff00', '#ff00ff'
 
 const createParticles = () => {
   particles = []
-  
   let count, speed, size
   
+  // Scale celebration based on win amount
   if (props.amount >= 50) {
     count = 300; speed = 18; size = 10
   } else if (props.amount >= 20) {
@@ -41,10 +39,14 @@ const createParticles = () => {
   
   console.log(`🎉 Creating ${count} confetti particles for $${props.amount} win`)
   
+  // Get actual canvas dimensions to ensure particles spawn in the true center
+  const centerX = canvas.value.width / 2
+  const centerY = canvas.value.height / 2
+
   for (let i = 0; i < count; i++) {
     particles.push({
-      x: 250,
-      y: 300,
+      x: centerX,
+      y: centerY,
       vx: (Math.random() - 0.5) * speed,
       vy: (Math.random() - 1) * speed,
       size: Math.random() * size + 4,
@@ -60,7 +62,7 @@ const animate = () => {
   if (!canvas.value) return
   
   const ctx = canvas.value.getContext('2d')
-  ctx.clearRect(0, 0, 500, 600)
+  ctx.clearRect(0, 0, canvas.value.width, canvas.value.height)
 
   let aliveCount = 0
   particles.forEach((p) => {
@@ -69,7 +71,7 @@ const animate = () => {
 
     p.x += p.vx
     p.y += p.vy
-    p.vy += 0.4
+    p.vy += 0.4 // gravity
     p.rotation += p.rotationSpeed
     p.life -= 0.015
 
@@ -85,17 +87,24 @@ const animate = () => {
   if (aliveCount > 0) {
     animationId = requestAnimationFrame(animate)
   } else {
+    console.log('✅ Confetti animation finished')
     emit('done')
   }
 }
 
 watch(() => props.show, async (newVal) => {
-  console.log('🎊 Confetti show changed to:', newVal)
+  console.log('🎊 Confetti show prop changed to:', newVal, '| Win Amount:', props.amount)
   
   if (newVal) {
     await nextTick()
     if (canvas.value) {
       console.log('✅ Canvas mounted, starting animation')
+      
+      // Dynamically match canvas internal resolution to the screen size
+      // This prevents stretching and ensures particles spawn in the true center
+      canvas.value.width = window.innerWidth
+      canvas.value.height = window.innerHeight
+      
       createParticles()
       animate()
     }
@@ -114,12 +123,12 @@ onUnmounted(() => {
 
 <style scoped>
 .confetti-canvas {
-  position: absolute;
+  position: fixed; /* Changed from absolute to fixed to escape parent container clipping */
   top: 0;
   left: 0;
-  width: 100%;
-  height: 100%;
+  width: 100vw;
+  height: 100vh;
   pointer-events: none;
-  z-index: 100;
+  z-index: 9999; /* Guaranteed to be above the slot machine UI */
 }
 </style>

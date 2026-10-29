@@ -105,14 +105,7 @@ const isSpinning = ref(false)
 const showConfetti = ref(false)
 
 const SYMBOLS = [
-  '🍒',
-  '🍋',
-  '🍊',
-  '🍇',
-  '🔔',
-  '💎',
-  '7️⃣',
-  '⭐'
+  '🍒', '🍋', '🍊', '🍇', '🔔', '7️⃣', '💎', '⭐'
 ]
 
 const SYMBOL_HEIGHT = 70
@@ -120,31 +113,22 @@ const FILLER_COUNT = 50
 const SCROLL_ITEMS = 40
 
 // ============================================================
-// WEIGHTED SYMBOL DISTRIBUTION
-//
-// Total weight = 107
-//
-// 🍒 = 30/107
-// 🍋 = 25/107
-// 🍊 = 20/107
-// 🍇 = 15/107
-// 🔔 = 10/107
-// 7️⃣ =  4/107
-// 💎 =  2/107
-// ⭐ =  1/107
-//
-// These probabilities are used for EVERY mathematical outcome.
+// FUN MODE: WEIGHTED SYMBOL DISTRIBUTION (Total = 100)
+// 
+// We slightly increased the odds of mid/high-tier symbols 
+// to make hitting them feel less impossible, while keeping 
+// the game balanced.
 // ============================================================
 
 const SYMBOL_WEIGHTS = {
-  '🍒': 30,
-  '🍋': 25,
-  '🍊': 20,
-  '🍇': 15,
-  '🔔': 10,
-  '7️⃣': 4,
-  '💎': 2,
-  '⭐': 1
+  '🍒': 25, // (was 30)
+  '🍋': 20, // (was 25)
+  '🍊': 15, // (was 20)
+  '🍇': 15, // (was 15)
+  '🔔': 12, // (was 10)
+  '7️⃣':  8, // (was 4)  <- Doubled chance!
+  '💎':  4, // (was 2)  <- Doubled chance!
+  '⭐':  1  // (was 1)  <- Kept rare for that big win thrill
 }
 
 const TOTAL_WEIGHT = Object.values(SYMBOL_WEIGHTS)
@@ -159,12 +143,10 @@ const weightedRandom = () => {
 
   for (const [symbol, weight] of Object.entries(SYMBOL_WEIGHTS)) {
     random -= weight
-
     if (random < 0) {
       return symbol
     }
   }
-
   return '🍒'
 }
 
@@ -172,23 +154,9 @@ const weightedRandom = () => {
 // REEL STATE
 // ============================================================
 
-const reel1Strip = ref([
-  weightedRandom(),
-  weightedRandom(),
-  weightedRandom()
-])
-
-const reel2Strip = ref([
-  weightedRandom(),
-  weightedRandom(),
-  weightedRandom()
-])
-
-const reel3Strip = ref([
-  weightedRandom(),
-  weightedRandom(),
-  weightedRandom()
-])
+const reel1Strip = ref([weightedRandom(), weightedRandom(), weightedRandom()])
+const reel2Strip = ref([weightedRandom(), weightedRandom(), weightedRandom()])
+const reel3Strip = ref([weightedRandom(), weightedRandom(), weightedRandom()])
 
 const reel1Offset = ref(0)
 const reel2Offset = ref(0)
@@ -211,46 +179,34 @@ const reel2 = ref(null)
 const reel3 = ref(null)
 
 // ============================================================
-// PAYOUT TABLE
-//
-// These are MULTIPLIERS of the bet.
-//
-// Example:
-// $1 × 1000 = $1000
-// $0.05 × 1000 = $50
-// $0.005 × 1000 = $5
-//
+// FUN MODE: PAYOUT TABLE (Boosted Multipliers)
+// 
+// Increased payouts across the board to make wins feel 
+// more impactful. Combined with the new weights, this 
+// creates a highly engaging ~94% RTP.
 // ============================================================
 
 const payoutTable = {
   '⭐⭐⭐': { payout: 1000 },
   '💎💎💎': { payout: 500 },
-  '7️⃣7️⃣7️⃣': { payout: 100 },
-
-  '🔔🔔🔔': { payout: 30 },
-  '🍇🍇🍇': { payout: 12 },
-
-  '🍊🍊🍊': { payout: 6 },
-  '🍋🍋🍋': { payout: 3 },
-  '🍒🍒🍒': { payout: 1.5 }
+  '7️⃣7️⃣7️⃣': { payout: 150 }, // (was 100)
+  '🔔🔔🔔': { payout: 40 },    // (was 30)
+  '🍇🍇🍇': { payout: 15 },    // (was 12)
+  '🍊🍊🍊': { payout: 8 },     // (was 6)
+  '🍋🍋🍋': { payout: 4 },     // (was 3)
+  '🍒🍒🍒': { payout: 2 }      // (was 1.5)
 }
 
 // ============================================================
-// EXACT TWO-OF-A-KIND PAYOUT
-//
-// This value is mathematically solved for the exact 80% RTP
-// using the symbol weights above and the three-of-a-kind table.
-//
-// 1.3529572238422625 × bet
-//
-// The resulting theoretical RTP is:
-// 80.000000000000%
-//
-// House edge:
-// 20.000000000000%
+// FUN MODE: TWO-OF-A-KIND PAYOUT
+// 
+// Changed from the hyper-specific 1.3529... to a clean 1.5x.
+// Because players will now hit 2-of-a-kind ~41% of the time,
+// a 1.5x return keeps the game exciting and the balance 
+// ticking upward during lucky streaks!
 // ============================================================
 
-const TWO_SAME_PAYOUT = 1.3529572238422625
+const TWO_SAME_PAYOUT = 1.5
 
 // ============================================================
 // WIN CALCULATION
@@ -259,26 +215,17 @@ const TWO_SAME_PAYOUT = 1.3529572238422625
 const checkWin = (a, b, c) => {
   const key = `${a}${b}${c}`
 
-  // -----------------------------
   // THREE OF A KIND
-  // -----------------------------
-
   if (payoutTable[key]) {
     return payoutTable[key].payout * bet.value
   }
 
-  // -----------------------------
   // EXACTLY TWO OF A KIND
-  // -----------------------------
-
   if (a === b || a === c || b === c) {
     return TWO_SAME_PAYOUT * bet.value
   }
 
-  // -----------------------------
   // NO WIN
-  // -----------------------------
-
   return 0
 }
 
@@ -286,23 +233,12 @@ const checkWin = (a, b, c) => {
 // SPIN REEL
 // ============================================================
 
-const spinReel = async (
-  stripRef,
-  offsetRef,
-  transRef,
-  spinRef,
-  reelRef,
-  target,
-  duration
-) => {
+const spinReel = async (stripRef, offsetRef, transRef, spinRef, reelRef, target, duration) => {
   const longStrip = [
     weightedRandom(),
     target,
     weightedRandom(),
-    ...Array.from(
-      { length: FILLER_COUNT },
-      weightedRandom
-    )
+    ...Array.from({ length: FILLER_COUNT }, weightedRandom)
   ]
 
   const startOffset = -(SCROLL_ITEMS * SYMBOL_HEIGHT)
@@ -316,7 +252,7 @@ const spinReel = async (
   await nextTick()
 
   if (reelRef.value?.innerEl) {
-    void reelRef.value.innerEl.offsetHeight
+    void reelRef.value.innerEl.offsetHeight // Force reflow
   }
 
   transRef.value = true
@@ -329,32 +265,19 @@ const spinReel = async (
   transRef.value = false
   spinRef.value = false
 
-  stripRef.value = [
-    weightedRandom(),
-    target,
-    weightedRandom()
-  ]
-
+  stripRef.value = [weightedRandom(), target, weightedRandom()]
   offsetRef.value = 0
 }
 
 // ============================================================
 // SPIN HANDLER
-//
-// IMPORTANT:
-// The clicked symbol is NOT used as the mathematical outcome.
-//
-// This prevents the player from selecting ⭐ or 💎 and changing
-// the RTP.
-//
-// The click remains a UI interaction only.
 // ============================================================
 
 const handleClick = async () => {
   if (isSpinning.value) return
 
   if (balance.value < bet.value) {
-    alert('Insufficient balance!')
+    alert('Insufficient balance! Top up to keep spinning! 🪙')
     return
   }
 
@@ -365,9 +288,6 @@ const handleClick = async () => {
   showConfetti.value = false
   isSpinning.value = true
 
-  // Generate ALL three outcomes independently
-  // using the exact weighted distribution.
-
   const t1 = weightedRandom()
   const t2 = weightedRandom()
   const t3 = weightedRandom()
@@ -375,48 +295,21 @@ const handleClick = async () => {
   playSpin()
 
   await Promise.all([
-    spinReel(
-      reel1Strip,
-      reel1Offset,
-      reel1Transition,
-      reel1Spinning,
-      reel1,
-      t1,
-      reel1Duration
-    ),
-
-    spinReel(
-      reel2Strip,
-      reel2Offset,
-      reel2Transition,
-      reel2Spinning,
-      reel2,
-      t2,
-      reel2Duration
-    ),
-
-    spinReel(
-      reel3Strip,
-      reel3Offset,
-      reel3Transition,
-      reel3Spinning,
-      reel3,
-      t3,
-      reel3Duration
-    )
+    spinReel(reel1Strip, reel1Offset, reel1Transition, reel1Spinning, reel1, t1, reel1Duration),
+    spinReel(reel2Strip, reel2Offset, reel2Transition, reel2Spinning, reel2, t2, reel2Duration),
+    spinReel(reel3Strip, reel3Offset, reel3Transition, reel3Spinning, reel3, t3, reel3Duration)
   ])
 
   stopSpin()
   isSpinning.value = false
 
-  // Calculate actual mathematical win
   const win = checkWin(t1, t2, t3)
 
   if (win > 0) {
     balance.value += win
     lastWin.value = win
 
-    if (win >= 50) {
+    if (win >= 20) { // Lowered confetti threshold from 50 to 20 for more frequent celebrations!
       showConfetti.value = true
     }
 
@@ -424,15 +317,10 @@ const handleClick = async () => {
   }
 }
 
-// ============================================================
-// RANDOM SPIN BUTTON
-// ============================================================
-
 const handleRandomSpin = () => {
   handleClick()
 }
 </script>
-
 
 <style scoped>
 .app-container {
